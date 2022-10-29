@@ -31,7 +31,7 @@ import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
 import groovy.transform.Field
 
-public static String version() { return "v2.0.0" }
+public static String version() { return "v2.0.1" }
 public static String rootTopic() { return "hubitat" }
 
 definition(
@@ -77,7 +77,7 @@ preferences {
 def capabilitiesPage() {
     def deprecatedCapabilities = ["Actuator","Beacon","Bridge","Bulb","Button","Garage Door Control",
                                   "Indicator","Light","Lock Only","Music Player","Outlet","Polling","Relay Switch",
-                                  "Sensor","Shock Sensor","Thermostat Setpoint","Thermostat","Touch Sensor",
+                                  "Sensor","Thermostat Setpoint","Thermostat","Touch Sensor",
                                   "Configuration","Refresh"]
     dynamicPage(name: "capabilitiesPage") {        
         section ("<h2>Specify Exposed Capabilities per Device</h2>") {
@@ -497,6 +497,13 @@ def capabilitiesPage() {
 		],
 		action: "actionSecurityKeypad"
 	],
+        "shockSensor": [
+                name: "Shock Sensor",
+                capability: "capability.shockSensor",
+                attributes: [
+                        "shock"
+                ]
+        ],
 	"signalStrength": [
 		name: "Signal Strength",
 		capability: "capability.signalStrength",
@@ -789,15 +796,19 @@ def initialize() {
             def capabilityCamel = lowerCamel(capability)
             def capabilitiesMap = CAPABILITY_MAP[capabilityCamel]
 
-            capabilitiesMap["attributes"].each { attribute ->
-			    subscribe(device, attribute, inputHandler)
-		    }
-            
-            if (!attributes.containsKey(capabilityCamel)) {
-				attributes[capabilityCamel] = []
-			}
-            
-            attributes[capabilityCamel].push(normalizeId)
+            if (!CAPABILITY_MAP.find{ it.key == capabilityCamel}) {
+                debug("{$capabilityCamel} not found")
+            } else {
+                capabilitiesMap["attributes"].each { attribute ->
+                    subscribe(device, attribute, inputHandler)
+                    topic_key = "${capabilityCamel}/${attribute}"
+                    if (!attributes.find{ it.key == topic_key }) {
+                        attributes[topic_key] = []
+                    }
+                    debug("${topic_key} => ${normalizeId}")
+                    attributes[topic_key].push(normalizeId)
+                }
+            }
         }
     }
     
